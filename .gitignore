@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+# Runtime state: SQLite, receipts, replays, evaluations, NAMS seed record
+data/
+# Downloaded by make nams-distill (the checked-in fallback is pre-distilled-skill/)
+artifacts/distilled/
+node_modules/
+web/node_modules/
+web/dist/
+.tutorial-state/
+.pytest_cache/
+.ruff_cache/
+playwright-report/
+artifacts/screenshots/*
+!artifacts/screenshots/module-[1-4]-live.png
+!artifacts/screenshots/module-[1-4]-live.json
+.DS_Store
