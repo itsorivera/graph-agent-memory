@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +26,17 @@ class AppSettings(BaseSettings):
     openai_api_key: str = Field(default="", repr=False)
     openai_model: str = "gpt-4o-mini"
     embedding_model: str = "text-embedding-3-small"
+
+    # Chat model provider: OpenAI (default) or AWS Bedrock
+    model_provider: Literal["openai", "bedrock"] = "openai"
+    bedrock_model: str = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    aws_region: str = Field(
+        default="us-east-1",
+        validation_alias=AliasChoices("AWS_REGION", "AWS_DEFAULT_REGION"),
+    )
+    aws_access_key_id: str = Field(default="", repr=False)
+    aws_secret_access_key: str = Field(default="", repr=False)
+    aws_session_token: str = Field(default="", repr=False)
 
     # NAMS (module 5)
     nams_api_key: str = Field(default="", repr=False)
