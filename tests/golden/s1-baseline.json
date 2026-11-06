@@ -1,0 +1,12 @@
+{
+  "scenario": "s1-baseline",
+  "module": 1,
+  "generated_by": "tests/behavioral/run_scenario against ephemeral Neo4j — regenerate at each module's Phase 3 exit",
+  "exact": {
+    "labels_present": [],
+    "notes": "Module 1 is stateless: the memory graph must stay EMPTY. Any node here is a regression."
+  },
+  "aspirational": {
+    "entity_count_range": [0, 0]
+  }
+}
