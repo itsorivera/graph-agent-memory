@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
 
 from lib.operations import ReceiptGuard
 from lib.response import build_response
@@ -41,6 +42,23 @@ is no verified status source. Wikipedia company information is not service statu
 Keep responses short."""
 
 
+def build_model(settings: AppSettings) -> Model | str:
+    """Return the chat model for this module: OpenAI by default, Bedrock optional."""
+    if settings.model_provider == "bedrock":
+        # Imported lazily so OpenAI-only setups do not need the Bedrock extra.
+        from pydantic_ai.models.bedrock import BedrockConverseModel
+        from pydantic_ai.providers.bedrock import BedrockProvider
+
+        provider = BedrockProvider(
+            aws_access_key_id=settings.aws_access_key_id or None,
+            aws_secret_access_key=settings.aws_secret_access_key or None,
+            aws_session_token=settings.aws_session_token or None,
+            region_name=settings.aws_region,
+        )
+        return BedrockConverseModel(settings.bedrock_model, provider=provider)
+    return f"openai:{settings.openai_model}"
+
+
 class ChatService:
     module = 1
     memory = None  # Module 2 adds a Neo4j memory client.
@@ -52,7 +70,7 @@ class ChatService:
         self.business_tools = business_tools
         self.receipts = ReceiptGuard(settings.data_dir, f"m{self.module}")
         self.agent = Agent(
-            f"openai:{settings.openai_model}",
+            build_model(settings),
             deps_type=ToolDeps,
             tools=SQLITE_TOOLS if business_tools else [],
             output_type=str,
