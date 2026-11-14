@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from neo4j_agent_memory.embeddings import OpenAIEmbedder
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
 
 from lib.operations import ReceiptGuard
 from lib.response import build_response
@@ -24,7 +25,7 @@ from lib.settings import AppSettings
 
 from .context import Context, build_context
 from .guardrails import checked_reply, failure_reply, scope_turn
-from .memory import open_memory
+from .memory import build_embedding, open_memory
 from .tools import SQLITE_TOOLS, ToolDeps
 
 INSTRUCTIONS = """You are SupportBot for Acme Cloud, a fictional SaaS company.
@@ -69,6 +70,17 @@ def build_model(settings: AppSettings) -> Model | str:
         return BedrockConverseModel(settings.bedrock_model, provider=provider)
     return f"openai:{settings.openai_model}"
 
+
+def build_embedder(settings: AppSettings):
+    """Return the query embedder that matches the configured memory provider."""
+    embedding = build_embedding(settings)
+    if isinstance(embedding, str):
+        return OpenAIEmbedder(settings.embedding_model, api_key=settings.openai_api_key)
+    from neo4j_agent_memory.embeddings.base import adapt_to_legacy_embedder
+
+    return adapt_to_legacy_embedder(embedding)
+
+
 class ChatService:
     module = 2
     memory_layers = ["short_term"]
@@ -79,7 +91,7 @@ class ChatService:
         self.evaluation = evaluation  # Evaluation fixtures skip entity extraction.
         self.business_tools = business_tools
         self.receipts = ReceiptGuard(settings.data_dir, f"m{self.module}")
-        self.embedder = OpenAIEmbedder(settings.embedding_model, api_key=settings.openai_api_key)
+        self.embedder = build_embedder(settings)
         self.agent = Agent(
             build_model(settings),
             deps_type=ToolDeps,
