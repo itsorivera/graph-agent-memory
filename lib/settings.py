@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,9 +30,16 @@ class AppSettings(BaseSettings):
     # Chat model provider: OpenAI (default) or AWS Bedrock
     model_provider: Literal["openai", "bedrock"] = "openai"
     bedrock_model: str = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+    # Embeddings: OpenAI (default) or Bedrock Titan. Unset follows MODEL_PROVIDER,
+    # so a Bedrock-only setup switches both chat and vectors with one variable.
+    embedding_provider: Literal["openai", "bedrock"] | None = None
+    bedrock_embedding_model: str = "amazon.titan-embed-text-v2:0"
+    bedrock_embedding_dimensions: int = 1024
+
     aws_region: str = Field(
         default="us-east-1",
-        validation_alias=AliasChoices("AWS_REGION", "AWS_DEFAULT_REGION"),
+        validation_alias=AliasChoices("AWS_REGION_NAME", "AWS_REGION", "AWS_DEFAULT_REGION"),
     )
     aws_access_key_id: str = Field(default="", repr=False)
     aws_secret_access_key: str = Field(default="", repr=False)
@@ -49,9 +56,41 @@ class AppSettings(BaseSettings):
     agent_reasoning_retrieval: bool = True
     validation_mode: Literal["permissive", "strict"] = "permissive"
 
+    @field_validator("embedding_provider", mode="before")
+    @classmethod
+    def _empty_embedding_provider_is_none(cls, value):
+        """Treat `EMBEDDING_PROVIDER=` as unset so it follows MODEL_PROVIDER."""
+        return None if value in ("", None) else value
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "acme_cloud.db"
+
+    @property
+    def effective_embedding_provider(self) -> Literal["openai", "bedrock"]:
+        """Explicit EMBEDDING_PROVIDER wins; otherwise follow MODEL_PROVIDER."""
+        return self.embedding_provider or self.model_provider
+
+    def bedrock_embedding_kwargs(self) -> dict[str, str | None]:
+        """boto3 credential kwargs for the Bedrock embedder.
+
+        Temporary credentials include a session token that the Agent Memory
+        embedder adapter does not accept directly, so publish them through the
+        standard AWS environment variables and let boto3 pick them up.
+        """
+        if not self.aws_session_token:
+            return {
+                "aws_access_key_id": self.aws_access_key_id or None,
+                "aws_secret_access_key": self.aws_secret_access_key or None,
+            }
+        for key, value in (
+            ("AWS_ACCESS_KEY_ID", self.aws_access_key_id),
+            ("AWS_SECRET_ACCESS_KEY", self.aws_secret_access_key),
+            ("AWS_SESSION_TOKEN", self.aws_session_token),
+        ):
+            if value:
+                os.environ.setdefault(key, value)
+        return {}
 
 
 def _home_database(s: AppSettings) -> str | None:
