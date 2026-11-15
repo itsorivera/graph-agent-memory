@@ -1,0 +1,14 @@
+{
+  "name": "s1-baseline",
+  "module": 1,
+  "description": "Explicit case authorization; no identity inherited between turns.",
+  "sessions": [
+    {
+      "id": "s1-baseline-0",
+      "messages": [
+        "Hi, Maya Chen here (maya.chen@northwind.example). Look up my Acme Cloud account.",
+        "What email did I just give you? Do not look it up; say unknown if it is absent."
+      ]
+    }
+  ]
+}
