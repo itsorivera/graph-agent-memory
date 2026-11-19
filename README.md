@@ -8,6 +8,6 @@ The running case study is **Acme Cloud**, a fictional SaaS company. A support ag
 
 > **Why this matters:** context windows are not memory. Vector-only RAG retrieves text but loses relationships, scope, and history. A graph keeps *who said what, when, about which entity, and what happened next* — the structure an agent needs to act safely.
 
-## Arquitecture
+## Architecture
 
-![STM Components diagram](img/stm-components-diagram.png)
+![STM Components diagram](img/stm-components-diagram-v3.png)
